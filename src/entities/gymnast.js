@@ -3,7 +3,8 @@ export function makeGymnast(
     highBarHeight,
     highBarWidth,
     highBarX,
-    highBarY
+    highBarY,
+    floor,
 ) {
     const PLAYER_HEIGHT = (highBarHeight * 2) / 3;
     const PLAYER_WIDTH = 50;
@@ -19,7 +20,7 @@ export function makeGymnast(
         k.rect(PLAYER_WIDTH, PLAYER_HEIGHT),
         k.pos(PLAYER_X, PLAYER_Y),
         k.color(255, 243, 12),
-        k.rotate(0),
+        k.rotate(-360),
         k.anchor("top"),
         k.body(),
         k.area(),
@@ -27,11 +28,12 @@ export function makeGymnast(
 
     let angularVelocity = 0;
     let angularAcceleration = 0;
-    // let previousAngle = 0;
     let kickAngularAcceleration = 0;
-    // let timeSinceLastKick = 0;
+    let linearVelocityX = 0;
+    let linearVelocityY = 0;
+
     let playerIsAirborne = false;
-    let linearVelocity = 0;
+    let playerIsOnGround = false;
 
     //set all the keybindings
     k.onKeyPress("space", () => {
@@ -42,40 +44,74 @@ export function makeGymnast(
         }
     });
 
+    //refactor this eventually cuz its ugly
     k.onKeyPress("enter", () => {
-        // const currentTime = time();
-        playerIsAirborne = true;
-        console.log(player.angle);
+        if (!playerIsAirborne) {
+            playerIsAirborne = true;
+
+            //change the axis of rotation to be the persons center of gravity
+            player.anchor = "center";
+
+            let offsetX = 0;
+            let offsetY = 0;
+
+            let angle = player.angle < 0 ? player.angle+360 : player.angle;
+            
+            if (angle === 0) {
+                offsetY = PLAYER_HEIGHT / 2;
+            } else if (angle === 180) {
+                offsetY = -PLAYER_HEIGHT / 2;
+            } else if(angle === 90){
+                offsetX = -PLAYER_HEIGHT / 2;
+            } else if (angle === 270) {
+                offsetX = PLAYER_HEIGHT / 2;
+            } else if (angle > 0 && angle < 180) {
+                offsetY = (PLAYER_HEIGHT / 2) * Math.cos(angle*Math.PI/180);
+                offsetX = (PLAYER_HEIGHT / 2) * -1 * Math.sin(angle*Math.PI/180);
+            } else {
+                offsetX = (PLAYER_HEIGHT / 2) * -1 * Math.sin(angle*Math.PI/180);
+                offsetY = (PLAYER_HEIGHT / 2) * Math.cos(angle*Math.PI/180);
+            }
+
+            player.pos = vec2(player.pos.x + offsetX, player.pos.y + offsetY);
+
+            linearVelocityX = angularVelocity*-1*Math.cos(angle*Math.PI/180) * 60;
+            linearVelocityY = angularVelocity*-1*Math.sin(angle*Math.PI/180) * 60;
+        }
+
     });
+
+    player.onCollide("floor", () => {
+        playerIsOnGround = true;
+    })
 
     //might pull this out into its own function for general spin physics stuff
     //this is called about 60 times per second
     player.onUpdate(() => {
         //player is swinging
+        if (playerIsOnGround) {
+            return;
+        }
         if (!playerIsAirborne) {
             angularAcceleration =
                 -(GRAVITY * Math.sin(player.angle * (Math.PI / 180))) / 1.5;
             angularAcceleration += kickAngularAcceleration;
             kickAngularAcceleration = 0;
 
-            // if (player.angle > 0 && previousAngle < 0) angularAcceleration *= -1;
-            // else if (player.angle < 0 && previousAngle > 0) angularAcceleration *= -1;
-            // else if (player.angle > 180 && previousAngle < 180) angularAcceleration *= -1;
-            // else if (player.angle < 180 && previousAngle > 180) angularAcceleration *= -1;
-
-            //update all the things
             angularVelocity += angularAcceleration;
             angularVelocity *= FRICTION_MULTIPLIER;
 
-            if (angularVelocity < 0.001 && angularVelocity > -0.001)
-                angularVelocity = 0;
             player.angle += angularVelocity;
             player.angle %= 360;
         }
+
         //player is airborne
         else {
-            linearVelocity = Math.sqrt(2*angularAcceleration*Math.abs(player.angle));
-            // player.move(linearVelocityX, linearVelocityY);
+            player.angle += angularVelocity;
+            linearVelocityX *= 0.95 ;
+            linearVelocityY += 30 * GRAVITY;
+
+            player.move(linearVelocityX, linearVelocityY);
         }
     });
 

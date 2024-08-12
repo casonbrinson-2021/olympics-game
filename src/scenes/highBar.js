@@ -11,17 +11,18 @@ export function highBar(k) {
     k.setBackground("89CFF0");
  
     //floor
-    k.add([
+    const floor = k.add([
         k.rect(k.width(), k.height() / 10),
         k.pos(0, FLOOR_Y),
         k.color(Color.fromHex("#7CFC00")),
         k.area(),
         k.body({isStatic: true}),
         fixed(),
+        "floor",
     ]);
 
     //player
-    k.add(makeGymnast(k, HIGH_BAR_HEIGHT, HIGH_BAR_WIDTH, HIGH_BAR_X, HIGH_BAR_y));
+    k.add(makeGymnast(k, HIGH_BAR_HEIGHT, HIGH_BAR_WIDTH, HIGH_BAR_X, HIGH_BAR_y, floor));
 
     //high bar
     k.add([
